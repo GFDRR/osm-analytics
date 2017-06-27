@@ -2,32 +2,30 @@ var precss = require('precss')
 var rucksack = require('rucksack-css')
 var webpack = require('webpack')
 var path = require('path')
-var ExtractTextPlugin = require("extract-text-webpack-plugin");
 
-module.exports = {
-  context: path.join(__dirname, './app'),
-  entry: {
-    jsx: './index.js',
-    html: './index.html',
-    vendor: ['react']
-  },
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const rootPath = process.cwd()
+const envVariables = process.env
+
+const webpackConfig = {
+  entry: [
+    path.join(rootPath, 'app/index.js')
+  ],
   output: {
-    path: path.join(__dirname, './static'),
+    path: path.join(rootPath, 'static'),
     filename: 'bundle.js',
   },
   module: {
     loaders: [
       {
         test: /\.html$/,
-        loader: 'file?name=[name].[ext]'
+        loader: 'html-loader'
       },
       {
         test: /\.css$/,
         include: /app/,
-        //loader: ExtractTextPlugin.extract('style-loader', 'css-loader!postcss-loader')
         loaders: [
           'style-loader',
-          //'css-loader?sourceMap',
           'css-loader',
           'postcss-loader'
         ]
@@ -60,20 +58,39 @@ module.exports = {
     })
   ],
   plugins: [
+    new HtmlWebpackPlugin({
+      template: 'app/index.html',
+      inject: 'body',
+      filename: 'index.html',
+    }),
     new webpack.optimize.CommonsChunkPlugin('vendor', 'vendor.bundle.js'),
     new webpack.DefinePlugin({
       'process.env': { NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development') }
     }),
     new webpack.DefinePlugin({
-      "global.GENTLY": false // https://github.com/visionmedia/superagent/wiki/Superagent-for-Webpack
+      'global.GENTLY': false // https://github.com/visionmedia/superagent/wiki/Superagent-for-Webpack
     }),
     //new ExtractTextPlugin("style.css")
   ],
   devServer: {
-    contentBase: './client',
+    contentBase: './static',
     hot: true
-  },
-  node: {
-    __dirname: true,
   }
 }
+
+if (envVariables.NODE_ENV === 'production') {
+  webpackConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: false,
+      dead_code: true,
+      drop_debugger: true,
+      drop_console: true
+    },
+    comments: false
+  }))
+  webpackConfig.devtool = 'source-map'
+} else {
+  webpackConfig.devtool = 'eval-source-map'
+}
+
+module.exports = webpackConfig
